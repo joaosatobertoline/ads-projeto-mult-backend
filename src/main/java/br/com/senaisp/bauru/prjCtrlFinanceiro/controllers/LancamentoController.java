@@ -3,6 +3,8 @@ package br.com.senaisp.bauru.prjCtrlFinanceiro.controllers;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,59 +14,55 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import br.com.senaisp.bauru.prjCtrlFinanceiro.models.Lancamento;
+import br.com.senaisp.bauru.prjCtrlFinanceiro.dtos.LancamentoRequest;
+import br.com.senaisp.bauru.prjCtrlFinanceiro.dtos.LancamentoResponse;
 import br.com.senaisp.bauru.prjCtrlFinanceiro.services.LancamentoService;
 
 @RestController
 @RequestMapping("/lancamentos")
 @CrossOrigin(origins = "*")
 public class LancamentoController {
+	private final LancamentoService service;
 
-    private final LancamentoService service;
+	public LancamentoController(LancamentoService service) {
+		this.service = service;
+	}
 
-    public LancamentoController(LancamentoService service) {
-        this.service = service;
-    }
+	@GetMapping
+	public List<LancamentoResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+		return service.listar(Long.valueOf(jwt.getSubject()));
+	}
 
-    @GetMapping
-    public List<Lancamento> listar() {
-        return service.listar();
-    }
+	/*
+	 * TODO: Ajustar os itens abaixo: substituindo @PathVariable Long usuarioId
+	 * por @AuthenticationPrincipal Jwt jwt usuarioId por
+	 * Long.valueOf(jwt.getSubject()) na atividade autonoma
+	 */
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Lancamento> buscarPorId(@PathVariable Long id) {
-    	Lancamento categoria = service.buscarPorId(id);
-        if (categoria == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(categoria);
-    }
+	@PostMapping
+	public ResponseEntity<LancamentoResponse> cadastrar(@AuthenticationPrincipal Jwt jwt,
+			@RequestBody LancamentoRequest dados) {
+		return ResponseEntity.status(201).body(service.cadastrar(Long.valueOf(jwt.getSubject()), dados));
+	}
 
-    @PostMapping
-    public ResponseEntity<Lancamento> cadastrar(@RequestBody Lancamento lancamento) {
-    	Lancamento novoLancamento = service.salvar(lancamento);
-        return ResponseEntity.status(201).body(novoLancamento);
-    }
+	@GetMapping("/{id}")
+	public ResponseEntity<LancamentoResponse> buscarPorIdAndUsuarioId(@AuthenticationPrincipal Jwt jwt,
+			@PathVariable Long id) {
+		return ResponseEntity.status(200).body(service.buscarPorIdAndUsuarioId(id, Long.valueOf(jwt.getSubject())));
+	}
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Lancamento> atualizar( @PathVariable Long id, 
-                                                @RequestBody Lancamento lancamento) {
+	@PutMapping("/{id}")
+	public ResponseEntity<LancamentoResponse> atualizar(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+			@RequestBody LancamentoRequest dados) {
+		return ResponseEntity.status(200).body(service.alterar(Long.valueOf(jwt.getSubject()), id, dados));
+	}
 
-    	Lancamento lancamentoAtualizada =service.atualizar(id,lancamento);
-        if (lancamentoAtualizada == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(lancamentoAtualizada);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Long id) {
-        boolean excluida = service.excluir(id);
-        if (!excluida) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.noContent().build();
-    }
+	@DeleteMapping("/{id}")
+	public ResponseEntity<LancamentoResponse> apagar(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+		boolean excluida = service.excluir(Long.valueOf(jwt.getSubject()), id);
+		if (!excluida) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.noContent().build();
+	}
 }
